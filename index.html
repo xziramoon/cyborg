@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<title>CYBORG // TAG SYSTEM (CLOUD DB PRO v8.2)</title>
+<title>CYBORG // TAG SYSTEM (CLOUD DB PRO v8.0.1)</title>
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -175,7 +175,7 @@ select.inp { cursor:pointer; } select.inp option { background:var(--bg1); color:
     <div class="hud-title" data-text="CYBORG // TAG-SYS">CYBORG // TAG-SYS</div>
     <div class="hud-sub">
       <span class="blink-dot"></span>
-      CLOUD DB EDITION  ·  v8.2 (PRO AUTO-SYNC)
+      CLOUD DB EDITION  ·  v8.0.1 (PRO AUTO-SYNC)
     </div>
   </div>
 
@@ -288,7 +288,7 @@ select.inp { cursor:pointer; } select.inp option { background:var(--bg1); color:
 
 <script>
 /**
- * CYBORG TAG-SYS (v8.2 Black Highlight Edition)
+ * CYBORG TAG-SYS (v8.0.1 Original V8.0 Style + Pieces Feature)
  */
 
 const CLOUD_DB_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRUuWPCwpQbleOg8F8Kyt34obiUG15BuUuHJvRfo_I5GSqlCPp638EqDUgcqHG0igWkg9g6ko7h9hYS/pub?gid=2051624344&single=true&output=csv"; 
@@ -451,18 +451,16 @@ class StateManager {
         this.saveToStorage(); App.ui.debouncedRenderPreview();
     }
     
+    // โครงสร้างใหม่มีฟิลด์ Pieces
     addManualTag() {
         const globalSize = this.config.globalNameSz;
         this.queue.unshift({ 
             Barcode: '1234567890', ProductName: 'สินค้าใหม่ (กรอกชื่อ)', 
             NameFontSize: globalSize ? parseInt(globalSize) : 13,
             TagMode: 'standard', OldPrice: '', Price: '0.00', PriceOffsetX: 0,
-            Size: '', Unit: 'บรรจุ 1 ชิ้น', Ribbon: '', Unit2: 'บรรจุ 12 ขวด ยกลัง', Price2: '', Mfg: '', Exp: '', PrintQty: 1
+            Size: '', Unit: 'กล่อง', Pieces: '12', Ribbon: '', Unit2: 'ราคาส่ง', Price2: '', Mfg: '', Exp: '', PrintQty: 1
         });
-        this.saveToStorage(); 
-        App.ui.renderFull();
-        App.ui.setStatus('MANUAL TAG ADDED', 'var(--g)');
-        App.audio.play('success');
+        this.saveToStorage(); App.ui.renderFull(); App.ui.setStatus('MANUAL TAG ADDED', 'var(--g)'); App.audio.play('success');
     }
 
     addFromBarcode(code) {
@@ -476,16 +474,13 @@ class StateManager {
             App.audio.play('success');
         } else {
             const name = product ? (product.ProductName || 'รหัส: '+code) : 'รหัส: '+code;
+            const size = product ? (product.Size || Utils.extractSize(name)) : Utils.extractSize(name);
             const globalSize = this.config.globalNameSz;
-            const extSize = Utils.extractSize(name);
-            
-            const defaultSize = product ? (product.Size ? `ขนาด ${product.Size}` : (extSize ? `ขนาด ${extSize}` : '')) : (extSize ? `ขนาด ${extSize}` : '');
-            const defaultUnit = product ? (product.Unit ? `บรรจุ 1 ${product.Unit}` : 'บรรจุ 1 ชิ้น') : 'บรรจุ 1 ชิ้น';
             
             this.queue.push({
                 Barcode: code, ProductName: name, NameFontSize: globalSize ? parseInt(globalSize) : Utils.autoFontSize(name),
                 TagMode: 'standard', OldPrice: '', Price: product ? (product.Price || '0.00') : '0.00', PriceOffsetX: 0,
-                Size: defaultSize, Unit: defaultUnit, Ribbon: '', Unit2: 'บรรจุ 12 ขวด ยกลัง', Price2: '', Mfg: '', Exp: '', PrintQty: 1
+                Size: size, Unit: product ? (product.Unit || 'ชิ้น') : 'ชิ้น', Pieces: '', Ribbon: '', Unit2: 'บรรจุ 12 ขวด ยกลัง', Price2: '', Mfg: '', Exp: '', PrintQty: 1
             });
             
             if(product) { App.ui.setStatus(`TARGET ACQUIRED · ${name}`, 'var(--g)'); App.audio.play('success'); } 
@@ -611,8 +606,10 @@ class UIController {
             </div>
 
             <div class="q-row">
-                <input class="qi" value="${Utils.escapeHTML(item.Size||'')}" oninput="App.state.updateQueueItem(${i},'Size',this.value)" placeholder="ขนาด (เช่น ขนาด 120g)">
-                <input class="qi" value="${Utils.escapeHTML(item.Unit||'')}" oninput="App.state.updateQueueItem(${i},'Unit',this.value)" placeholder="บรรจุ (เช่น บรรจุ 1 กล่อง)">
+                <input class="qi" value="${Utils.escapeHTML(item.Size||'')}" oninput="App.state.updateQueueItem(${i},'Size',this.value)" placeholder="ขนาด">
+                <input class="qi" value="${Utils.escapeHTML(item.Unit||'')}" oninput="App.state.updateQueueItem(${i},'Unit',this.value)" placeholder="หน่วย (เช่น กล่อง)">
+                <!-- ช่องสำหรับใส่จำนวนชิ้นโดยเฉพาะ -->
+                <input class="qi sm" style="width:55px;" value="${Utils.escapeHTML(item.Pieces||'')}" oninput="App.state.updateQueueItem(${i},'Pieces',this.value)" placeholder="กี่ชิ้น?">
                 <input class="qi" value="${Utils.escapeHTML(item.Ribbon||'')}" oninput="App.state.updateQueueItem(${i},'Ribbon',this.value)" placeholder="ริบบิ้นขวาบน" style="border-color:rgba(255,34,85,.2)">
             </div>
 
@@ -658,14 +655,18 @@ class UIController {
                     oldHTML = `<div class="tag-old">ปกติ <del>${Number.isInteger(ro) ? ro : ro.toFixed(2)}</del></div>`;
                 }
                 
-                const safeSize = Utils.escapeHTML(item.Size?.trim() || ''); 
-                const safeUnit = Utils.escapeHTML(item.Unit?.trim() || '');
+                const safeSize = Utils.escapeHTML(item.Size?.trim()); 
+                const safeUnit = Utils.escapeHTML(item.Unit || 'ชิ้น');
+                const safePieces = Utils.escapeHTML(item.Pieces?.trim() || ''); // ดึงจำนวนชิ้นมาใช้
                 const safeUnit2 = Utils.escapeHTML(item.Unit2 || ''); const safeRibbon = Utils.escapeHTML(item.Ribbon?.trim());
                 const safeName = Utils.escapeHTML(item.ProductName); const safeMfg = Utils.escapeHTML(item.Mfg); const safeExp = Utils.escapeHTML(item.Exp);
 
-                // --- แก้ไขจุดนี้: ใส่ Class .badge ครอบข้อความเพื่อถมดำทั้งหมด ---
-                const sizeHTML = safeSize ? `<div style="margin-bottom: 2px;"><span class="badge" style="padding: 2px 4px; border-radius: 2px;">${safeSize}</span></div>` : '';
-                const unitHTML = safeUnit ? `<div><span class="badge" style="padding: 2px 4px; border-radius: 2px;">${safeUnit}</span></div>` : '';
+                // --- กลับสู่สไตล์แบบ v8.0 ต้นฉบับ ---
+                const sizeHTML = safeSize ? `<div><span class="badge">ขนาด</span>${safeSize}</div>` : '';
+                
+                // ถ้าระบุจำนวนชิ้นมา ให้เพิ่มข้อความต่อท้าย (12 ชิ้น)
+                const piecesHTML = safePieces ? ` <span style="font-weight:700;">(${safePieces} ชิ้น)</span>` : '';
+                const unitHTML = `<div><span class="badge">บรรจุ</span>1 ${safeUnit}${piecesHTML}</div>`;
                 
                 const ribbonHTML = safeRibbon ? `<div class="tag-ribbon">${safeRibbon}</div>` : '';
                 const xOffset = item.PriceOffsetX || 0;
@@ -699,12 +700,10 @@ class UIController {
                 } 
                 else if(item.TagMode === 'dual') {
                     const rawP2 = parseFloat(item.Price2) || 0; const p2Disp = Number.isInteger(rawP2) ? rawP2 : rawP2.toFixed(2);
-                    const p1Label = safeUnit ? safeUnit : 'ราคาปลีก'; const p2Label = safeUnit2 || 'ราคาส่ง';
-                    // นำ .badge มาครอบขนาดในป้ายส่งด้วย
-                    const sizeSubHTML = safeSize ? `<div style="font-size:9px; font-weight:600; margin-top:2px;"><span class="badge" style="padding: 1px 4px; border-radius: 2px;">${safeSize}</span></div>` : '';
-
+                    const p1Label = item.Unit ? `ปลีก (1 ${safeUnit})` : 'ราคาปลีก'; const p2Label = safeUnit2 || 'ราคาส่ง';
+                    
                     tagMiddleHTML = `
-                        <div class="tag-name-area"><div class="tag-name" style="font-size:${item.NameFontSize||13}px">${safeName}</div>${sizeSubHTML}</div>
+                        <div class="tag-name-area"><div class="tag-name" style="font-size:${item.NameFontSize||13}px">${safeName}</div></div>
                         <div class="tag-mid-dual">
                             <div class="dual-col"><div class="dual-badge">${p1Label}</div><div class="dual-price-row"><div class="dual-price-val">${pDisp}</div><div class="dual-baht">บาท</div></div></div>
                             <div class="dual-div"></div>
@@ -716,9 +715,8 @@ class UIController {
                     const rawP2 = parseFloat(item.Price2) || 0; const p2Disp = Number.isInteger(rawP2) ? rawP2 : rawP2.toFixed(2);
                     
                     let largeLeftHTML = '';
-                    // นำ .badge มาครอบในป้ายใหญ่ (Large)
-                    if(safeSize) largeLeftHTML += `<div style="margin-bottom: 4px;"><span class="badge" style="font-size: 14px; padding: 2px 6px;">${safeSize}</span></div>`; 
-                    if(safeUnit) largeLeftHTML += `<div style="margin-bottom: 4px;"><span class="badge" style="font-size: 14px; padding: 2px 6px;">${safeUnit}</span></div>`;
+                    if(safeSize) largeLeftHTML += `<div>ขนาด ${safeSize}</div>`; 
+                    largeLeftHTML += `<div>บรรจุ 1 ${safeUnit}${piecesHTML}</div>`;
                     if(safeUnit2) largeLeftHTML += `<div>${safeUnit2}</div>`;
                     if(safeMfg || safeExp) {
                         largeLeftHTML += `<div style="margin-top:6px;">`;
